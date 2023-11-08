@@ -13,7 +13,7 @@ Make sure namespace is created.
 Local Database (PostgreSQL) is created by default, to disable
 spec: 
   skipLocalDb: true
-This way third party DB can teorethically be configured. TODO: It just requires some changes in Backstage appConfig (I think), 
+This way third party DB can theorethically be configured. TODO: It just requires some changes in Backstage appConfig (I think), 
 because it only expects either in-container SQLite or MySQL.
 TODO: should we consider using in-container SQLite for K8s deployment as well (single container deployment)?
 

@@ -35,6 +35,13 @@ spec:
           spec:
             description: BackstageSpec defines the desired state of Backstage
             properties:
+              appConfigs:
+                items:
+                  properties:
+                    name:
+                      type: string
+                  type: object
+                type: array
               deployment:
                 description: Deployment enables declarative updates for Pods and ReplicaSets.
                 properties:

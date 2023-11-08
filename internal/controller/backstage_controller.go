@@ -30,15 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	// Expected Opaque Secret with data
-	//POSTGRES_USER:
-	//POSTGRES_PASSWORD:
-	postgreCredSecret  = "postgres-secrets"
-	postgreVolume      = "postgres-storage"
-	postgreVolumeClaim = "postgres-storage-claim"
-)
-
 // BackstageDeploymentReconciler reconciles a Backstage object
 type BackstageDeploymentReconciler struct {
 	client.Client
@@ -72,7 +63,6 @@ func (r *BackstageDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, fmt.Errorf("failed to load backstage deployment from the cluster: %w", err)
 	}
 
-	// check if we need to skip it
 	if !backstage.Spec.SkipLocalDb {
 		// log Debug
 		if err := r.applyPV(ctx, backstage, req.Namespace); err != nil {
@@ -137,6 +127,7 @@ func readYaml(manifest string, object interface{}) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *BackstageDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bs.Backstage{}).
 		Complete(r)
