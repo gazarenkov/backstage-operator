@@ -1,0 +1,33 @@
+apiVersion: backstage.io/v1alpha1
+kind: Backstage
+metadata:
+  name: bs1
+  namespace: backstage
+spec:
+  deployment:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: backstage
+      labels:
+        app: backstage
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: backstage
+      template:
+        metadata:
+          labels:
+            app: backstage
+        spec:
+          containers:
+            - name: backstage
+              image: ghcr.io/backstage/backstage
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: http
+                  containerPort: 7007
+              envFrom:
+                - secretRef:
+                    name: postgres-secrets

@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -33,7 +34,7 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app: backstage
+    app: backstage # backstage-<cr-name>
   ports:
     - name: http
       port: 80
@@ -41,37 +42,35 @@ spec:
 `
 )
 
+// selector for deploy.spec.template.spec.meta.label
+// targetPort: http for deploy.spec.template.spec.containers.ports.name=http
 func (r *BackstageDeploymentReconciler) applyBackstageService(ctx context.Context, backstage bs.Backstage, ns string) error {
 
-	//lg := log.FromContext(ctx)
+	lg := log.FromContext(ctx)
 
-	var service *corev1.Service
-	if backstage.Spec.Service.Kind != "" {
-		service = &backstage.Spec.Service
-	} else {
-		service = &corev1.Service{}
-		err := readYaml(DefaultBackstageService, service)
-		if err != nil {
-			return err
-		}
+	service := &corev1.Service{}
+	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.BackstageConfigName, "service", ns, DefaultBackstageService, service)
+	if err != nil {
+		return err
 	}
+	service.Spec.Selector["app"] = fmt.Sprintf("backstage-%s", backstage.Name)
 
-	// TODO consider apply merge instead?
-	service.Namespace = ns
-	err := r.Get(ctx, types.NamespacedName{Name: service.Name, Namespace: ns}, service)
+	err = r.Get(ctx, types.NamespacedName{Name: service.Name, Namespace: ns}, service)
 	if err != nil {
 		if errors.IsNotFound(err) {
 		} else {
 			return fmt.Errorf("failed to get backstage service, reason: %s", err)
 		}
 	} else {
+		lg.Info("CR update is ignored for the time")
 		return nil
 	}
 
-	err = r.Create(ctx, service)
-	if err != nil {
-		return fmt.Errorf("failed to create backstage service, reason: %s", err)
+	if !backstage.Spec.DryRun {
+		err = r.Create(ctx, service)
+		if err != nil {
+			return fmt.Errorf("failed to create backstage service, reason: %s", err)
+		}
 	}
-
 	return nil
 }

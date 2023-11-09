@@ -22,6 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -30,16 +31,15 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backstage
-  namespace: backstage
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backstage
+      app: backstage  # backstage-<cr-name>
   template:
     metadata:
       labels:
-        app: backstage
+        app: backstage # backstage-<cr-name>
     spec:
       containers:
         - name: backstage
@@ -53,29 +53,24 @@ spec:
                 name: postgres-secrets
 #            - secretRef:
 #                name: backstage-secrets
+          envFrom:
+
 `
 )
 
 func (r *BackstageDeploymentReconciler) applyBackstageDeployment(ctx context.Context, backstage bs.Backstage, ns string) error {
 
-	//lg := log.FromContext(ctx)
+	lg := log.FromContext(ctx)
 
-	var deployment *appsv1.Deployment
-	if backstage.Spec.Deployment.Kind != "" {
-		deployment = &backstage.Spec.Deployment
-	} else {
-		deployment = &appsv1.Deployment{}
-		err := readYaml(DefaultBackstageDeployment, deployment)
-		if err != nil {
-			return err
-		}
+	deployment := &appsv1.Deployment{}
+	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.BackstageConfigName, "deployment", ns, DefaultBackstageDeployment, deployment)
+	if err != nil {
+		return err
 	}
+	deployment.Spec.Template.ObjectMeta.Labels["app"] = fmt.Sprintf("backstage-%s", backstage.Name)
+	deployment.Spec.Selector.MatchLabels["app"] = fmt.Sprintf("backstage-%s", backstage.Name)
 
-	deployment.Namespace = ns
-
-	// TODO consider apply merge instead?
-	deployment.Namespace = ns
-	err := r.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: ns}, deployment)
+	err = r.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: ns}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 
@@ -83,12 +78,15 @@ func (r *BackstageDeploymentReconciler) applyBackstageDeployment(ctx context.Con
 			return fmt.Errorf("failed to get backstage deployment, reason: %s", err)
 		}
 	} else {
+		lg.Info("CR update is ignored for the time")
 		return nil
 	}
 
-	err = r.Create(ctx, deployment)
-	if err != nil {
-		return fmt.Errorf("failed to create backstage deplyment, reason: %s", err)
+	if !backstage.Spec.DryRun {
+		err = r.Create(ctx, deployment)
+		if err != nil {
+			return fmt.Errorf("failed to create backstage deplyment, reason: %s", err)
+		}
 	}
 
 	return nil
