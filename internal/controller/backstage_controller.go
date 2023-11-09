@@ -111,9 +111,13 @@ func (r *BackstageDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.
 	return ctrl.Result{}, nil
 }
 
-func (r *BackstageDeploymentReconciler) readConfigMapOrDefault(ctx context.Context, name string, key string, ns string, def string, object v1.Object /*interface{}*/) error {
+func (r *BackstageDeploymentReconciler) readConfigMapOrDefault(ctx context.Context, name string, key string, ns string, def string, object v1.Object) error {
 
 	// ConfigMap name not set, default
+	lg := log.FromContext(ctx)
+
+	lg.V(1).Info("readConfigMapOrDefault CM: ", "name", name)
+
 	if name == "" {
 		err := readYaml(def, object)
 		if err != nil {
@@ -127,6 +131,7 @@ func (r *BackstageDeploymentReconciler) readConfigMapOrDefault(ctx context.Conte
 	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, &cm); err != nil {
 		return err
 	}
+	lg.V(1).Info("readConfigMapOrDefault CM name found: ", "ConfigMap:", cm)
 	val, ok := cm.Data[key]
 	if !ok {
 		// key not found, default

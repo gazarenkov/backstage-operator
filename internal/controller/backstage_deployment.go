@@ -63,7 +63,7 @@ func (r *BackstageDeploymentReconciler) applyBackstageDeployment(ctx context.Con
 	lg := log.FromContext(ctx)
 
 	deployment := &appsv1.Deployment{}
-	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.BackstageConfigName, "deployment", ns, DefaultBackstageDeployment, deployment)
+	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.BackstageConfigName, "deploy", ns, DefaultBackstageDeployment, deployment)
 	if err != nil {
 		return err
 	}
