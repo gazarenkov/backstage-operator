@@ -17,65 +17,63 @@ limitations under the License.
 package v1alpha1
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BackstageSpec defines the desired state of Backstage
 type BackstageSpec struct {
-	AppConfigs []ConfigRef `json:"appConfigs,omitempty"`
-	//RuntimeConfig ConfigRef   `json:"runtimeConfig,omitempty"`
-	//LocalDbConfig ConfigRef   `json:"localDbConfig,omitempty"`
+	AppConfigs    []string      `json:"appConfigs,omitempty"`
+	RuntimeConfig RuntimeConfig `json:"runtimeConfig,omitempty"`
+	//+kubebuilder:default=false
+	DryRun bool `json:"dryRun,omitempty"`
 
 	//+kubebuilder:default=false
-	SkipLocalDb bool          `json:"skipLocalDb,omitempty"`
-	LocalDb     LocalDbConfig `json:"localDb,omitempty"`
+	SkipLocalDb bool `json:"skipLocalDb,omitempty"`
+	//LocalDb     LocalDbConfig `json:"localDb,omitempty"`
 
 	//+kubebuilder:validation:XEmbeddedResource
-	Deployment appsv1.Deployment `json:"deployment,omitempty"`
+	//Deployment appsv1.Deployment `json:"deployment,omitempty"`
 
 	//+kubebuilder:validation:XEmbeddedResource
-	Service corev1.Service `json:"service,omitempty"`
+	//Service corev1.Service `json:"service,omitempty"`
 }
 
-type ConfigRef struct {
-	ByNameConfigMapSelector string `json:"name,omitempty"`
-	// TODO: do we need that multiple configs in a Namespace?
-	//ByLabelsConfigMapSelector metav1.LabelSelector `json:"labelSelector,omitempty"`
+type RuntimeConfig struct {
+	BackstageConfigName string `json:"backstageConfig,omitempty"`
+	LocalDbConfigName   string `json:"localDbConfig,omitempty"`
 }
 
-// Configuration works like this (for the time):
-// * if some object PV, PVC, etc defined - it is taken as a basis
-// * otherwise default will be taken (TODO: move defaults to Operator's ConfigMap?)
-// * and it is also possible to ovewrite some with Parameters if any (TODO: do we need it?)
-// TODO do we need to move this to ConfigMap to not to overload CR?
-type LocalDbConfig struct {
-	Parameters LocalDbParameters `json:"parameters,omitempty"`
-	//+kubebuilder:validation:XEmbeddedResource
-	PersistentVolume corev1.PersistentVolume `json:"persistentVolume,omitempty"`
-	//+kubebuilder:validation:XEmbeddedResource
-	PersistentVolumeClaim corev1.PersistentVolumeClaim `json:"persistentVolumeClaim,omitempty"`
-	//+kubebuilder:validation:XEmbeddedResource
-	Deployment appsv1.Deployment `json:"deployment,omitempty"`
-	//+kubebuilder:validation:XEmbeddedResource
-	Service corev1.Service `json:"service,omitempty"`
-}
+//// Configuration works like this (for the time):
+//// * if some object PV, PVC, etc defined - it is taken as a basis
+//// * otherwise default will be taken (TODO: move defaults to Operator's ConfigMap?)
+//// * and it is also possible to ovewrite some with Parameters if any (TODO: do we need it?)
+//// TODO do we need to move this to ConfigMap to not to overload CR?
+//type LocalDbConfig struct {
+//	Parameters LocalDbParameters `json:"parameters,omitempty"`
+//	//+kubebuilder:validation:XEmbeddedResource
+//	PersistentVolume corev1.PersistentVolume `json:"persistentVolume,omitempty"`
+//	//+kubebuilder:validation:XEmbeddedResource
+//	PersistentVolumeClaim corev1.PersistentVolumeClaim `json:"persistentVolumeClaim,omitempty"`
+//	//+kubebuilder:validation:XEmbeddedResource
+//	Deployment appsv1.Deployment `json:"deployment,omitempty"`
+//	//+kubebuilder:validation:XEmbeddedResource
+//	Service corev1.Service `json:"service,omitempty"`
+//}
 
-type LocalDbParameters struct {
-	DeploymentName  string `json:"deploymentName,omitempty"`
-	Replicas        int    `json:"replicas,omitempty"`
-	StorageCapacity string `json:"capacity,omitempty"`
-	SecretRefName   string `json:"secretRefName,omitempty"`
-	Image           string `json:"image,omitempty"`
-	PullPolicy      string `json:"pullPolicy,omitempty"`
-}
+//type LocalDbParameters struct {
+//	DeploymentName  string `json:"deploymentName,omitempty"`
+//	Replicas        int    `json:"replicas,omitempty"`
+//	StorageCapacity string `json:"capacity,omitempty"`
+//	SecretRefName   string `json:"secretRefName,omitempty"`
+//	Image           string `json:"image,omitempty"`
+//	PullPolicy      string `json:"pullPolicy,omitempty"`
+//}
 
 // BackstageStatus defines the observed state of Backstage
 type BackstageStatus struct {
 	//TODO
-	BackstageState string        `json:"backstageState,omitempty"`
-	LocalDb        LocalDbStatus `json:"localDb,omitempty"`
+	BackstageState string `json:"backstageState,omitempty"`
+	//LocalDb        LocalDbStatus `json:"localDb,omitempty"`
 }
 
 type LocalDbStatus struct {

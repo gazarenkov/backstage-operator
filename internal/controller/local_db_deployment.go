@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -34,11 +35,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: postgres  # backstage-db-<cr-name>
   template:
     metadata:
       labels:
-        app: postgres
+        app: postgres # backstage-db-<cr-name>
     spec:
       containers:
         - name: postgres
@@ -63,7 +64,7 @@ metadata:
   name: postgres
 spec:
   selector:
-    app: postgres
+    app: postgres # backstage-db-<cr-name>
   ports:
     - port: 5432
 `
@@ -71,24 +72,18 @@ spec:
 
 func (r *BackstageDeploymentReconciler) applyLocalDbDeployment(ctx context.Context, backstage bs.Backstage, ns string) error {
 
-	//lg := log.FromContext(ctx)
+	lg := log.FromContext(ctx)
 
-	var deployment *appsv1.Deployment
-	if backstage.Spec.LocalDb.Deployment.Kind != "" {
-		deployment = &backstage.Spec.LocalDb.Deployment
-	} else {
-		deployment = &appsv1.Deployment{}
-		err := readYaml(DefaultLocalDbDeployment, deployment)
-		if err != nil {
-			return err
-		}
+	deployment := &appsv1.Deployment{}
+	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.LocalDbConfigName, "deployment", ns, DefaultLocalDbDeployment, deployment)
+	if err != nil {
+		return err
 	}
+	deployment.Spec.Template.ObjectMeta.Labels["app"] = fmt.Sprintf("backstage-db-%s", backstage.Name)
+	deployment.Spec.Selector.MatchLabels["app"] = fmt.Sprintf("backstage-db-%s", backstage.Name)
 
-	deployment.Namespace = ns
-
-	// TODO consider apply merge instead?
-	deployment.Namespace = ns
-	err := r.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: ns}, deployment)
+	//deployment.Namespace = ns
+	err = r.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: ns}, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 
@@ -96,12 +91,15 @@ func (r *BackstageDeploymentReconciler) applyLocalDbDeployment(ctx context.Conte
 			return fmt.Errorf("failed to get deployment, reason: %s", err)
 		}
 	} else {
+		lg.Info("CR update is ignored for the time")
 		return nil
 	}
 
-	err = r.Create(ctx, deployment)
-	if err != nil {
-		return fmt.Errorf("failed to create deplyment, reason: %s", err)
+	if !backstage.Spec.DryRun {
+		err = r.Create(ctx, deployment)
+		if err != nil {
+			return fmt.Errorf("failed to create deplyment, reason: %s", err)
+		}
 	}
 
 	return nil
@@ -109,39 +107,32 @@ func (r *BackstageDeploymentReconciler) applyLocalDbDeployment(ctx context.Conte
 
 func (r *BackstageDeploymentReconciler) applyLocalDbService(ctx context.Context, backstage bs.Backstage, ns string) error {
 
-	//lg := log.FromContext(ctx)
+	lg := log.FromContext(ctx)
 
-	var service *corev1.Service
-	if backstage.Spec.LocalDb.Service.Kind != "" {
-		service = &backstage.Spec.LocalDb.Service
-	} else {
-		service = &corev1.Service{}
-		err := readYaml(DefaultLocalDbService, service)
-		if err != nil {
-			return err
-		}
+	service := &corev1.Service{}
+	err := r.readConfigMapOrDefault(ctx, backstage.Spec.RuntimeConfig.LocalDbConfigName, "service", ns, DefaultLocalDbService, service)
+	if err != nil {
+		return err
 	}
+	service.Spec.Selector["app"] = fmt.Sprintf("backstage-db-%s", backstage.Name)
 
-	// TODO consider apply merge instead?
-	service.Namespace = ns
-	err := r.Get(ctx, types.NamespacedName{Name: service.Name, Namespace: ns}, service)
+	//service.Namespace = ns
+	err = r.Get(ctx, types.NamespacedName{Name: service.Name, Namespace: ns}, service)
 	if err != nil {
 		if errors.IsNotFound(err) {
 		} else {
 			return fmt.Errorf("failed to get service, reason: %s", err)
 		}
 	} else {
+		lg.Info("CR update is ignored for the time")
 		return nil
 	}
 
-	err = r.Create(ctx, service)
-	//po := client.PatchOptions{}
-	//patch := client.Apply
-	//patch.Type()
-	//patch.Data(fff)
-	//err = r.Patch(ctx, service, patch)
-	if err != nil {
-		return fmt.Errorf("failed to create service, reason: %s", err)
+	if !backstage.Spec.DryRun {
+		err = r.Create(ctx, service)
+		if err != nil {
+			return fmt.Errorf("failed to create service, reason: %s", err)
+		}
 	}
 
 	return nil

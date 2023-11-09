@@ -5,3 +5,5 @@ metadata:
   namespace: backstage
 #spec:
 #  skipLocalDb: true
+#  dryRun: true
+

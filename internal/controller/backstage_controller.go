@@ -21,9 +21,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -66,7 +68,7 @@ func (r *BackstageDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.
 	if !backstage.Spec.SkipLocalDb {
 		// log Debug
 		if err := r.applyPV(ctx, backstage, req.Namespace); err != nil {
-			backstage.Status.LocalDb.PersistentVolume.Status = err.Error()
+			//backstage.Status.LocalDb.PersistentVolume.Status = err.Error()
 			return ctrl.Result{}, err
 		}
 
@@ -109,6 +111,39 @@ func (r *BackstageDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.
 	return ctrl.Result{}, nil
 }
 
+func (r *BackstageDeploymentReconciler) readConfigMapOrDefault(ctx context.Context, name string, key string, ns string, def string, object v1.Object /*interface{}*/) error {
+
+	// ConfigMap name not set, default
+	if name == "" {
+		err := readYaml(def, object)
+		if err != nil {
+			return err
+		}
+		object.SetNamespace(ns)
+		return nil
+	}
+
+	cm := corev1.ConfigMap{}
+	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, &cm); err != nil {
+		return err
+	}
+	val, ok := cm.Data[key]
+	if !ok {
+		// key not found, default
+		err := readYaml(def, object)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := readYaml(val, object)
+		if err != nil {
+			return err
+		}
+	}
+	object.SetNamespace(ns)
+	return nil
+}
+
 func (r *BackstageDeploymentReconciler) labels(meta v1.ObjectMeta, name string) {
 	if meta.Labels == nil {
 		meta.Labels = map[string]string{}
@@ -128,7 +163,19 @@ func readYaml(manifest string, object interface{}) error {
 // SetupWithManager sets up the controller with the Manager.
 func (r *BackstageDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
+	//if err := initDefaults(); err != nil {
+	//	return err
+	//}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&bs.Backstage{}).
 		Complete(r)
 }
+
+//func initDefaults() error {
+//	//deployment = &appsv1.Deployment{}
+//	if err := readYaml(DefaultBackstageDeployment, DefBackstageDeployment); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
