@@ -53,7 +53,7 @@ spec:
                 name: postgres-secrets
 #            - secretRef:
 #                name: backstage-secrets
-          envFrom:
+
 
 `
 )
