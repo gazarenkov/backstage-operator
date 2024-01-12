@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-operator
+  annotations:
+    github.com/project-slug: gazarenkov/backstage-operator
+spec:
+  type: other
+  lifecycle: unknown
+  owner: gazarenkov
